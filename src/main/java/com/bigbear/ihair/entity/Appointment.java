@@ -1,0 +1,37 @@
+package com.bigbear.ihair.entity;
+
+import com.bigbear.ihair.common.BaseEntity;
+import com.bigbear.ihair.entity.enums.AppointmentStatus;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "appointments")
+public class Appointment extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hair_service_id", nullable = false)
+    private HairService hairService;
+
+    @Column(nullable = false)
+    private LocalDateTime appointmentDateTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AppointmentStatus status = AppointmentStatus.PENDING;
+
+    private String notes;
+}
