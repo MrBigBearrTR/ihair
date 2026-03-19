@@ -1,0 +1,523 @@
+{
+  "info": {
+    "name": "iHair API",
+    "description": "iHair Kuaför Yönetim Sistemi - Tüm API Endpoint'leri",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', res.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"<refresh_token_buraya>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Salons",
+      "item": [
+        {
+          "name": "Get All Salons",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons"
+          }
+        },
+        {
+          "name": "Get Salon By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons/1"
+          }
+        },
+        {
+          "name": "Create Salon",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"iHair Kuaför Salonu\",\n  \"address\": \"Atatürk Cad. No:1, İstanbul\",\n  \"phone\": \"02121234567\",\n  \"email\": \"info@ihair.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Salon",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"iHair Premium Salon\",\n  \"address\": \"Bağdat Cad. No:25, İstanbul\",\n  \"phone\": \"02127654321\",\n  \"email\": \"premium@ihair.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Salon (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Get All Employees",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/employees"
+          }
+        },
+        {
+          "name": "Get Employees By Salon",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?salonId=1",
+              "query": [{ "key": "salonId", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Get Employee By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/employees/1"
+          }
+        },
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/employees",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ayşe\",\n  \"lastName\": \"Yılmaz\",\n  \"phone\": \"05301234567\",\n  \"email\": \"ayse@ihair.com\",\n  \"salonId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/employees/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ayşe\",\n  \"lastName\": \"Kaya\",\n  \"phone\": \"05309876543\",\n  \"email\": \"ayse.kaya@ihair.com\",\n  \"salonId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Employee (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/employees/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/customers"
+          }
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/customers/1"
+          }
+        },
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/customers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Fatma\",\n  \"lastName\": \"Demir\",\n  \"phone\": \"05441234567\",\n  \"email\": \"fatma@email.com\",\n  \"notes\": \"Saç boyasına alerjisi var\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/customers/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Fatma\",\n  \"lastName\": \"Demir\",\n  \"phone\": \"05441234567\",\n  \"email\": \"fatma.demir@email.com\",\n  \"notes\": \"VIP müşteri - Saç boyasına alerjisi var\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Customer (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/customers/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hair Services",
+      "item": [
+        {
+          "name": "Get All Hair Services",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/hair-services"
+          }
+        },
+        {
+          "name": "Get Hair Services By Salon",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/hair-services?salonId=1",
+              "query": [{ "key": "salonId", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Get Hair Service By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/hair-services/1"
+          }
+        },
+        {
+          "name": "Create Hair Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/hair-services",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Saç Kesimi\",\n  \"description\": \"Yıkama dahil erkek / kadın saç kesimi\",\n  \"price\": 250.00,\n  \"durationMinutes\": 45,\n  \"salonId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Hair Service",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/hair-services/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Saç Kesimi & Şekillendirme\",\n  \"description\": \"Yıkama ve şekillendirme dahil\",\n  \"price\": 300.00,\n  \"durationMinutes\": 60,\n  \"salonId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Hair Service (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/hair-services/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Get All Appointments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/appointments"
+          }
+        },
+        {
+          "name": "Get Appointment By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/appointments/1"
+          }
+        },
+        {
+          "name": "Create Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/appointments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"employeeId\": 1,\n  \"hairServiceId\": 1,\n  \"appointmentDateTime\": \"2026-04-01T10:00:00\",\n  \"notes\": \"Müşteri saat 10'a gelecek\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Appointment with Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/appointments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"employeeId\": 1,\n  \"hairServiceId\": 1,\n  \"appointmentDateTime\": \"2026-04-02T14:00:00\",\n  \"notes\": \"Kampanyalı randevu\",\n  \"campaignCode\": \"KURUCU50\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Appointment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/appointments/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"employeeId\": 1,\n  \"hairServiceId\": 1,\n  \"appointmentDateTime\": \"2026-04-01T10:00:00\",\n  \"status\": \"CONFIRMED\",\n  \"notes\": \"Onaylandı\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Appointment (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/appointments/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Campaigns",
+      "item": [
+        {
+          "name": "Get All Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/campaigns"
+          }
+        },
+        {
+          "name": "Get Campaign By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/campaigns/1"
+          }
+        },
+        {
+          "name": "Validate Campaign Code",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/validate?code=KURUCU50",
+              "query": [{ "key": "code", "value": "KURUCU50" }]
+            }
+          }
+        },
+        {
+          "name": "Create Campaign (Percentage)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/campaigns",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kurucu Üye Kampanyası\",\n  \"description\": \"İlk 50 müşterimize %20 indirim\",\n  \"code\": \"KURUCU50\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 20,\n  \"maxUsageCount\": 50,\n  \"isCustomerSpecific\": false,\n  \"validFrom\": \"2026-03-01T00:00:00\",\n  \"validTo\": \"2026-12-31T23:59:59\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Campaign (Fixed Amount)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/campaigns",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"100 TL İndirim Kuponu\",\n  \"description\": \"Belirli bir müşteriye özel 100 TL indirim\",\n  \"discountType\": \"FIXED_AMOUNT\",\n  \"discountValue\": 100,\n  \"maxUsageCount\": 1,\n  \"isCustomerSpecific\": true,\n  \"customerId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Campaign (Free Session)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/campaigns",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ücretsiz Seans Hediye\",\n  \"description\": \"1 seans tamamen ücretsiz\",\n  \"discountType\": \"FREE_SESSION\",\n  \"discountValue\": 0,\n  \"maxUsageCount\": 1,\n  \"isCustomerSpecific\": true,\n  \"customerId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Campaign (Auto-generated Code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/campaigns",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Özel İndirim\",\n  \"description\": \"Sistem otomatik kod oluşturur\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 15,\n  \"maxUsageCount\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/campaigns/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kurucu Üye Kampanyası (Güncellendi)\",\n  \"description\": \"İlk 50 müşterimize %25 indirim\",\n  \"code\": \"KURUCU50\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 25,\n  \"maxUsageCount\": 50,\n  \"isCustomerSpecific\": false,\n  \"validFrom\": \"2026-03-01T00:00:00\",\n  \"validTo\": \"2026-12-31T23:59:59\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Campaign (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/campaigns/1"
+          }
+        }
+      ]
+    }
+  ]
+}

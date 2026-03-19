@@ -22,6 +22,9 @@ public class Salon extends BaseEntity {
 
     private String email;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean active = true;
+
     @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Employee> employees;
 

@@ -1,12 +1,12 @@
 package com.bigbear.ihair.controller;
 
+import com.bigbear.ihair.dto.request.CustomerRequestDto;
 import com.bigbear.ihair.dto.response.CustomerResponseDto;
 import com.bigbear.ihair.service.CustomerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -17,8 +17,29 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
-    @GetMapping("/active")
-    public ResponseEntity<List<CustomerResponseDto>> getActiveCustomers() {
-        return ResponseEntity.ok(customerService.getActiveCustomers());
+    @GetMapping
+    public ResponseEntity<List<CustomerResponseDto>> getAll() {
+        return ResponseEntity.ok(customerService.getAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CustomerResponseDto> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(customerService.getById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<CustomerResponseDto> create(@RequestBody CustomerRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(customerService.create(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CustomerResponseDto> update(@PathVariable Long id, @RequestBody CustomerRequestDto request) {
+        return ResponseEntity.ok(customerService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        customerService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

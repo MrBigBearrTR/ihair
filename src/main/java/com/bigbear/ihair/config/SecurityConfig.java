@@ -34,7 +34,13 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/campaigns/validate").authenticated()
+                        .requestMatchers("/api/salons/**").hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers("/api/hair-services/**").hasAnyRole("ADMIN", "SALON_OWNER")
                         .requestMatchers("/api/customers/**").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers("/api/appointments/**").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers("/api/campaigns/**").hasAnyRole("ADMIN", "SALON_OWNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

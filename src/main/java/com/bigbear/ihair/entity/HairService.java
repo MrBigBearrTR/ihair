@@ -24,6 +24,9 @@ public class HairService extends BaseEntity {
     @Column(nullable = false)
     private Integer durationMinutes;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean active = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "salon_id", nullable = false)
     private Salon salon;

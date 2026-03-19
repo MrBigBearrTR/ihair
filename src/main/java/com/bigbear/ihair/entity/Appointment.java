@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -34,4 +35,11 @@ public class Appointment extends BaseEntity {
     private AppointmentStatus status = AppointmentStatus.PENDING;
 
     private String notes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_id")
+    private Campaign campaign;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal finalPrice;
 }
