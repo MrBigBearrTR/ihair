@@ -1,11 +1,14 @@
 package com.bigbear.ihair.service.impl;
 
+import com.bigbear.ihair.dto.request.ChangePasswordRequestDto;
 import com.bigbear.ihair.dto.request.LoginRequestDto;
 import com.bigbear.ihair.dto.request.RefreshTokenRequestDto;
 import com.bigbear.ihair.dto.request.RegisterRequestDto;
 import com.bigbear.ihair.dto.response.AuthResponseDto;
 import com.bigbear.ihair.entity.RefreshToken;
 import com.bigbear.ihair.entity.User;
+import com.bigbear.ihair.exception.BadRequestException;
+import com.bigbear.ihair.exception.DuplicateResourceException;
 import com.bigbear.ihair.exception.ResourceNotFoundException;
 import com.bigbear.ihair.repository.RefreshTokenRepository;
 import com.bigbear.ihair.repository.UserRepository;
@@ -39,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponseDto register(RegisterRequestDto request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Bu kullanıcı adı zaten alınmış: " + request.getUsername());
+            throw new DuplicateResourceException("Bu kullanıcı adı zaten alınmış: " + request.getUsername());
         }
 
         User user = new User();
@@ -85,6 +88,22 @@ public class AuthServiceImpl implements AuthService {
     public void logout(RefreshTokenRequestDto request) {
         refreshTokenRepository.findByToken(request.getRefreshToken())
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String username, ChangePasswordRequestDto request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: " + username));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Mevcut şifre hatalı.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        refreshTokenRepository.findByUser(user).ifPresent(refreshTokenRepository::delete);
     }
 
     private AuthResponseDto buildAuthResponse(User user) {

@@ -1,5 +1,6 @@
 package com.bigbear.ihair.service;
 
+import com.bigbear.ihair.dto.request.ChangePasswordRequestDto;
 import com.bigbear.ihair.dto.request.LoginRequestDto;
 import com.bigbear.ihair.dto.request.RefreshTokenRequestDto;
 import com.bigbear.ihair.dto.request.RegisterRequestDto;
@@ -14,4 +15,6 @@ public interface AuthService {
     AuthResponseDto refresh(RefreshTokenRequestDto request);
 
     void logout(RefreshTokenRequestDto request);
+
+    void changePassword(String username, ChangePasswordRequestDto request);
 }

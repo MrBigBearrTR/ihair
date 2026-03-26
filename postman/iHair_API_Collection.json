@@ -13,14 +13,17 @@
       "name": "Auth",
       "item": [
         {
-          "name": "Register",
+          "name": "Register (ADMIN only)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
             "url": "{{baseUrl}}/api/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"salonowner1\",\n  \"firstName\": \"Ahmet\",\n  \"lastName\": \"Yıldız\",\n  \"password\": \"sifre123\",\n  \"role\": \"SALON_OWNER\"\n}"
             }
           }
         },
@@ -68,6 +71,21 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
             "url": "{{baseUrl}}/api/auth/logout"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/auth/change-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"yeniSifre456!\"\n}"
+            }
           }
         }
       ]

@@ -33,7 +33,11 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/logout").authenticated()
+                        .requestMatchers("/api/auth/register").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/change-password").authenticated()
                         .requestMatchers("/api/campaigns/validate").authenticated()
                         .requestMatchers("/api/salons/**").hasAnyRole("ADMIN", "SALON_OWNER")
                         .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "SALON_OWNER")

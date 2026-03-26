@@ -139,14 +139,27 @@ Customer ──o Campaign   (müşteriye özel kampanya)
 - **Refresh Token Süresi:** 7 gün  
 - **Giriş Alanı:** `username` + `password`
 
+### Varsayılan Admin Kullanıcısı
+
+Sunucu ilk başlatıldığında sistemde hiç `ADMIN` rolünde kullanıcı yoksa otomatik olarak aşağıdaki kullanıcı oluşturulur:
+
+| Alan | Değer |
+|---|---|
+| username | `admin` |
+| password | `admin123` |
+| role | `ADMIN` |
+
+> İlk girişten sonra `PUT /api/auth/change-password` ile şifre değiştirilmesi zorunludur.
+
 ### Endpoint'ler
 
 | Method | URL | Açıklama | Auth |
 |---|---|---|---|
-| POST | `/api/auth/register` | Kullanıcı kaydı | - |
 | POST | `/api/auth/login` | Giriş, token döner | - |
 | POST | `/api/auth/refresh` | Access token yenile | - |
 | POST | `/api/auth/logout` | Refresh token sil | Bearer |
+| POST | `/api/auth/register` | Yeni kullanıcı ekle | **Sadece ADMIN** |
+| PUT | `/api/auth/change-password` | Şifre değiştir | Bearer |
 
 ### Login İsteği
 
@@ -185,6 +198,8 @@ Customer ──o Campaign   (müşteriye özel kampanya)
 
 | Endpoint | ADMIN | SALON_OWNER | EMPLOYEE | CUSTOMER |
 |---|:---:|:---:|:---:|:---:|
+| `/api/auth/register` | ✅ | ❌ | ❌ | ❌ |
+| `/api/auth/change-password` | ✅ | ✅ | ✅ | ✅ |
 | `/api/salons/**` | ✅ | ✅ | ❌ | ❌ |
 | `/api/employees/**` | ✅ | ✅ | ❌ | ❌ |
 | `/api/hair-services/**` | ✅ | ✅ | ❌ | ❌ |

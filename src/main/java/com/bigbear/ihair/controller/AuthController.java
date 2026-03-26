@@ -1,5 +1,6 @@
 package com.bigbear.ihair.controller;
 
+import com.bigbear.ihair.dto.request.ChangePasswordRequestDto;
 import com.bigbear.ihair.dto.request.LoginRequestDto;
 import com.bigbear.ihair.dto.request.RefreshTokenRequestDto;
 import com.bigbear.ihair.dto.request.RegisterRequestDto;
@@ -8,6 +9,8 @@ import com.bigbear.ihair.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,6 +38,14 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestBody RefreshTokenRequestDto request) {
         authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody ChangePasswordRequestDto request) {
+        authService.changePassword(userDetails.getUsername(), request);
         return ResponseEntity.noContent().build();
     }
 }
