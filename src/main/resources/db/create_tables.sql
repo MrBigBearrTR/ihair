@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS appointments   CASCADE;
 DROP TABLE IF EXISTS campaigns      CASCADE;
 DROP TABLE IF EXISTS hair_services  CASCADE;
 DROP TABLE IF EXISTS employees      CASCADE;
+DROP TABLE IF EXISTS salon_settings CASCADE;
 DROP TABLE IF EXISTS customers      CASCADE;
 DROP TABLE IF EXISTS salons         CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
@@ -212,6 +213,37 @@ COMMENT ON COLUMN campaigns.created_at             IS 'Kaydın oluşturulma tari
 COMMENT ON COLUMN campaigns.updated_at             IS 'Kaydın son güncellenme tarihi (otomatik)';
 
 -- ============================================================
+-- SALON_SETTINGS - Salon Sabit Bilgileri (Key-Value)
+-- ============================================================
+CREATE TABLE salon_settings (
+    id             BIGSERIAL        PRIMARY KEY,
+    salon_id       BIGINT           NOT NULL,
+    setting_key    VARCHAR(100)     NOT NULL,
+    setting_type   VARCHAR(20)      NOT NULL DEFAULT 'TEXT',
+    setting_value  TEXT             NOT NULL,
+    description    VARCHAR(255),
+    created_at     TIMESTAMP        NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMP,
+
+    CONSTRAINT fk_salon_settings_salon
+        FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE,
+    CONSTRAINT uq_salon_settings_salon_key
+        UNIQUE (salon_id, setting_key),
+    CONSTRAINT chk_salon_settings_type
+        CHECK (setting_type IN ('TEXT', 'IMAGE_BASE64', 'URL', 'JSON'))
+);
+
+COMMENT ON TABLE  salon_settings               IS 'Salon bazlı sabit bilgileri (logo, adres, sosyal medya vb.) key-value yapısında tutar';
+COMMENT ON COLUMN salon_settings.id            IS 'Birincil anahtar, otomatik artan';
+COMMENT ON COLUMN salon_settings.salon_id      IS 'Ayarın ait olduğu salonun yabancı anahtarı';
+COMMENT ON COLUMN salon_settings.setting_key   IS 'Ayar anahtarı (büyük harf normalize edilir; örn: LOGO, ADDRESS, WORKING_HOURS)';
+COMMENT ON COLUMN salon_settings.setting_type  IS 'Değerin tipi: TEXT (düz metin), IMAGE_BASE64 (base64 görsel), URL (link), JSON (yapılandırılmış veri)';
+COMMENT ON COLUMN salon_settings.setting_value IS 'Ayar değeri; setting_type''a göre yorumlanır';
+COMMENT ON COLUMN salon_settings.description   IS 'Ayarın insan tarafından okunabilir açıklaması (opsiyonel)';
+COMMENT ON COLUMN salon_settings.created_at    IS 'Kaydın oluşturulma tarihi (otomatik)';
+COMMENT ON COLUMN salon_settings.updated_at    IS 'Kaydın son güncellenme tarihi (otomatik)';
+
+-- ============================================================
 -- APPOINTMENTS - Randevular
 -- ============================================================
 CREATE TABLE appointments (
@@ -269,6 +301,8 @@ CREATE INDEX idx_appointments_campaign_id        ON appointments(campaign_id);
 CREATE INDEX idx_campaigns_code                  ON campaigns(code);
 CREATE INDEX idx_campaigns_active                ON campaigns(active);
 CREATE INDEX idx_campaigns_customer_id           ON campaigns(customer_id);
+CREATE INDEX idx_salon_settings_salon_id         ON salon_settings(salon_id);
+CREATE INDEX idx_salon_settings_key              ON salon_settings(setting_key);
 
 -- ============================================================
 -- Başarı mesajı
@@ -283,5 +317,6 @@ BEGIN
     RAISE NOTICE '  - customers';
     RAISE NOTICE '  - hair_services';
     RAISE NOTICE '  - campaigns';
+    RAISE NOTICE '  - salon_settings';
     RAISE NOTICE '  - appointments';
 END $$;

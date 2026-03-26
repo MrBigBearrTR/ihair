@@ -123,6 +123,7 @@ Customer ──o Campaign   (müşteriye özel kampanya)
 | `employees` | first_name, last_name, phone, email, salon_id, **active** |
 | `customers` | first_name, last_name, phone, email, notes, **active** |
 | `hair_services` | name, description, price, duration_minutes, salon_id, **active** |
+| `salon_settings` | salon_id, setting_key, setting_type, setting_value (UNIQUE: salon_id+key) |
 | `appointments` | customer_id, employee_id, hair_service_id, appointment_date_time, **status**, campaign_id, final_price |
 | `campaigns` | name, code (unique), discount_type, discount_value, max_usage_count, used_count, is_customer_specific, valid_from, valid_to, **active** |
 
@@ -207,6 +208,7 @@ Sunucu ilk başlatıldığında sistemde hiç `ADMIN` rolünde kullanıcı yoksa
 | `/api/appointments/**` | ✅ | ✅ | ✅ | ❌ |
 | `/api/campaigns/**` | ✅ | ✅ | ❌ | ❌ |
 | `/api/campaigns/validate` | ✅ | ✅ | ✅ | ✅ |
+| `/api/salons/*/settings/**` | ✅ | ✅ | ❌ | ❌ |
 
 ### Salon
 
@@ -270,6 +272,32 @@ Sunucu ilk başlatıldığında sistemde hiç `ADMIN` rolünde kullanıcı yoksa
 | POST | `/api/campaigns` | Yeni kampanya oluştur |
 | PUT | `/api/campaigns/{id}` | Kampanya güncelle |
 | DELETE | `/api/campaigns/{id}` | Kampanya pasifleştir |
+
+### Salon Ayarları (Salon Settings)
+
+| Method | URL | Açıklama |
+|---|---|---|
+| GET | `/api/salons/{salonId}/settings` | Salona ait tüm ayarları listele |
+| GET | `/api/salons/{salonId}/settings/{key}` | Tek ayarı getir (anahtara göre) |
+| PUT | `/api/salons/{salonId}/settings/{key}` | Ayar ekle veya güncelle (upsert) |
+| DELETE | `/api/salons/{salonId}/settings/{key}` | Ayarı sil |
+
+> `key` büyük harfe normalize edilir (`logo` → `LOGO`). `PUT` upsert gibi çalışır: yoksa ekler, varsa günceller.
+
+#### Önerilen Anahtarlar (serbest giriş, zorunlu değil)
+
+| Key | Tip | Açıklama |
+|---|---|---|
+| `LOGO` | `IMAGE_BASE64` | Salon logosu |
+| `ADDRESS` | `TEXT` | Açık adres |
+| `TAX_NUMBER` | `TEXT` | Vergi kimlik numarası |
+| `PHONE_DISPLAY` | `TEXT` | Görünen telefon numarası |
+| `EMAIL_DISPLAY` | `TEXT` | Görünen e-posta |
+| `WEBSITE` | `URL` | Web sitesi |
+| `INSTAGRAM` | `URL` | Instagram profil linki |
+| `WORKING_HOURS` | `JSON` | Çalışma saatleri (JSON) |
+| `SLOGAN` | `TEXT` | Salon sloganı |
+| `MAP_LINK` | `URL` | Google Maps linki |
 
 > **Otomatik Kod:** `code` alanı boş bırakılırsa sistem `IH-XXXXXXXX` formatında benzersiz kod üretir.
 

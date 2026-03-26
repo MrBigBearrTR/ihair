@@ -30,4 +30,7 @@ public class Salon extends BaseEntity {
 
     @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<HairService> services;
+
+    @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<SalonSetting> settings;
 }

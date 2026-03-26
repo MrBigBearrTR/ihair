@@ -536,6 +536,110 @@
           }
         }
       ]
+    },
+    {
+      "name": "Salon Settings",
+      "item": [
+        {
+          "name": "Get All Settings (Salon 1)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons/1/settings"
+          }
+        },
+        {
+          "name": "Get Setting By Key",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons/1/settings/LOGO"
+          }
+        },
+        {
+          "name": "Upsert - Logo (Base64)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1/settings/LOGO",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settingType\": \"IMAGE_BASE64\",\n  \"settingValue\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n  \"description\": \"Salon logosu (PNG, base64)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upsert - Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1/settings/ADDRESS",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settingType\": \"TEXT\",\n  \"settingValue\": \"Atatürk Caddesi No:1, Kadıköy, İstanbul\",\n  \"description\": \"Salonun açık adresi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upsert - Tax Number",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1/settings/TAX_NUMBER",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settingType\": \"TEXT\",\n  \"settingValue\": \"1234567890\",\n  \"description\": \"Vergi kimlik numarası\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upsert - Instagram",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1/settings/INSTAGRAM",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settingType\": \"URL\",\n  \"settingValue\": \"https://instagram.com/ihairsalon\",\n  \"description\": \"Instagram profil linki\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upsert - Working Hours (JSON)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/salons/1/settings/WORKING_HOURS",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settingType\": \"JSON\",\n  \"settingValue\": \"{\\\"monday\\\":\\\"09:00-18:00\\\",\\\"tuesday\\\":\\\"09:00-18:00\\\",\\\"wednesday\\\":\\\"09:00-18:00\\\",\\\"thursday\\\":\\\"09:00-18:00\\\",\\\"friday\\\":\\\"09:00-18:00\\\",\\\"saturday\\\":\\\"10:00-16:00\\\",\\\"sunday\\\":\\\"Kapalı\\\"}\",\n  \"description\": \"Çalışma saatleri (JSON formatı)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Setting",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/salons/1/settings/TAX_NUMBER"
+          }
+        }
+      ]
     }
   ]
 }
