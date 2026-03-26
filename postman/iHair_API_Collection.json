@@ -68,9 +68,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": "{{baseUrl}}/api/auth/logout"
+            "url": "{{baseUrl}}/api/auth/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"<refresh_token_buraya>\"\n}"
+            }
           }
         },
         {
