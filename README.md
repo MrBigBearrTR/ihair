@@ -561,33 +561,98 @@ Yanıtta `finalPrice` hesaplanmış indirimli fiyatı içerir.
 
 - Java 25+
 - Maven 3.9+
-- PostgreSQL 18
 
-### Veritabanı Yapılandırması
+### Profiller
 
-`application.properties` içinde aşağıdaki değerleri ayarlayın:
+| Profil | Veritabanı | Kullanım |
+|---|---|---|
+| `default` (boş) | Local PostgreSQL (`localhost:5432`) | Geliştirme |
+| `dev` | H2 (dosya tabanlı) | PostgreSQL kurulu değilse |
+| `prod` | Neon PostgreSQL (cloud) | Production / Test |
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/ihair
-spring.datasource.username=postgres
-spring.datasource.password=<şifreniz>
-spring.jpa.hibernate.ddl-auto=update
-jwt.secret=<en_az_64_karakter_gizli_anahtar>
-jwt.access-token-expiration=86400000
-jwt.refresh-token-expiration=604800000
-```
+---
 
-> `ddl-auto=update` ile tablolar otomatik oluşturulur/güncellenir.  
-> Sıfırdan kurmak için `src/main/resources/db/create_tables.sql` dosyasını çalıştırın.
+### Local Geliştirme
 
-### Çalıştırma
+`application.properties` zaten yapılandırılmıştır. Doğrudan çalıştırın:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Uygulama `http://localhost:8080` adresinde başlar.  
-İlk başlatmada `admin / admin123` kullanıcısı otomatik oluşturulur.
+---
+
+### Production — Neon PostgreSQL
+
+#### 1. .env Dosyasını Hazırla
+
+```bash
+cp .env.example .env
+```
+
+`.env` dosyasını düzenle:
+
+```env
+DATABASE_URL=jdbc:postgresql://ep-xxx.region.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+DATABASE_USERNAME=neondb_owner
+DATABASE_PASSWORD=your-password
+JWT_SECRET=en-az-64-karakter-guclu-rastgele-string
+SPRING_PROFILES_ACTIVE=prod
+```
+
+> Neon bağlantı string'i: [neon.tech](https://neon.tech) → Proje → **Connect** → **JDBC** formatını seç.  
+> `postgresql://` → `jdbc:postgresql://` olarak değiştir, `user:pass@` kısmını çıkar.
+
+#### 2. Uygulamayı Prod Profiliyle Başlat
+
+**Windows (PowerShell):**
+```powershell
+$env:SPRING_PROFILES_ACTIVE="prod"
+$env:DATABASE_URL="jdbc:postgresql://ep-xxx.neon.tech/neondb?sslmode=require&channel_binding=require"
+$env:DATABASE_USERNAME="neondb_owner"
+$env:DATABASE_PASSWORD="your-password"
+$env:JWT_SECRET="your-jwt-secret"
+mvn spring-boot:run
+```
+
+**Linux / Mac:**
+```bash
+export SPRING_PROFILES_ACTIVE=prod
+export DATABASE_URL=jdbc:postgresql://ep-xxx.neon.tech/neondb?sslmode=require&channel_binding=require
+export DATABASE_USERNAME=neondb_owner
+export DATABASE_PASSWORD=your-password
+export JWT_SECRET=your-jwt-secret
+mvn spring-boot:run
+```
+
+**JAR ile (sunucuda):**
+```bash
+java -jar target/ihair-0.0.1-SNAPSHOT.jar \
+  --spring.profiles.active=prod \
+  --DATABASE_URL=jdbc:postgresql://... \
+  --DATABASE_USERNAME=neondb_owner \
+  --DATABASE_PASSWORD=your-password \
+  --JWT_SECRET=your-secret
+```
+
+#### 3. Başarılı Bağlantı Kontrolü
+
+Uygulama başlarken logda şunları görmelisiniz:
+
+```
+Hibernate: create table if not exists users (...)
+Hibernate: create table if not exists salons (...)
+...
+>>> Varsayılan admin kullanıcısı oluşturuldu.
+Tomcat started on port 8080
+```
+
+Tablolar Neon dashboard'unda **Tables** sekmesinde görünmeye başlar.
+
+---
+
+> `.env` dosyası `.gitignore`'a eklenmiştir — git'e gönderilmez.  
+> `.env.example` şablon olarak commit'lenir, gerçek değer içermez.
 
 ---
 

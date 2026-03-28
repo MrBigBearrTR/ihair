@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Hassas Konfigürasyon ###
+.env
+application-local.properties
