@@ -10,7 +10,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -31,6 +33,24 @@ public class User extends BaseEntity implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "salon_id")
+    private Salon salon;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_salon_access",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "salon_id"),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uq_user_salon_access",
+                    columnNames = {"user_id", "salon_id"}))
+    private Set<Salon> authorizedSalons = new LinkedHashSet<>();
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", unique = true)
+    private Employee employee;
 
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean active = true;

@@ -6,7 +6,7 @@ import com.bigbear.ihair.dto.response.CampaignResponseDto;
 import java.util.List;
 
 public interface CampaignService {
-    List<CampaignResponseDto> getAll();
+    List<CampaignResponseDto> getAll(Long salonId);
     CampaignResponseDto getById(Long id);
     CampaignResponseDto create(CampaignRequestDto request);
     CampaignResponseDto update(Long id, CampaignRequestDto request);

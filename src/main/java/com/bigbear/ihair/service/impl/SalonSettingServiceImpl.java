@@ -7,6 +7,7 @@ import com.bigbear.ihair.entity.SalonSetting;
 import com.bigbear.ihair.exception.ResourceNotFoundException;
 import com.bigbear.ihair.repository.SalonRepository;
 import com.bigbear.ihair.repository.SalonSettingRepository;
+import com.bigbear.ihair.security.SalonAccessService;
 import com.bigbear.ihair.service.SalonSettingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,10 +21,12 @@ public class SalonSettingServiceImpl implements SalonSettingService {
 
     private final SalonSettingRepository salonSettingRepository;
     private final SalonRepository salonRepository;
+    private final SalonAccessService salonAccessService;
 
     @Override
     @Transactional(readOnly = true)
     public List<SalonSettingResponseDto> getAllBySalon(Long salonId) {
+        salonAccessService.requireSalonAccess(salonId);
         findActiveSalon(salonId);
         return salonSettingRepository.findAllBySalonId(salonId)
                 .stream().map(SalonSettingResponseDto::new).toList();
@@ -32,6 +35,7 @@ public class SalonSettingServiceImpl implements SalonSettingService {
     @Override
     @Transactional(readOnly = true)
     public SalonSettingResponseDto getByKey(Long salonId, String key) {
+        salonAccessService.requireSalonAccess(salonId);
         findActiveSalon(salonId);
         SalonSetting setting = salonSettingRepository
                 .findBySalonIdAndSettingKey(salonId, normalize(key))
@@ -43,6 +47,7 @@ public class SalonSettingServiceImpl implements SalonSettingService {
     @Override
     @Transactional
     public SalonSettingResponseDto upsert(Long salonId, String key, SalonSettingRequestDto request) {
+        salonAccessService.requireSalonAccess(salonId);
         Salon salon = findActiveSalon(salonId);
         String normalizedKey = normalize(key);
 
@@ -62,6 +67,7 @@ public class SalonSettingServiceImpl implements SalonSettingService {
     @Override
     @Transactional
     public void delete(Long salonId, String key) {
+        salonAccessService.requireSalonAccess(salonId);
         findActiveSalon(salonId);
         String normalizedKey = normalize(key);
         if (!salonSettingRepository.existsBySalonIdAndSettingKey(salonId, normalizedKey)) {

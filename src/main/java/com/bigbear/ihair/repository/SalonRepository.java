@@ -10,4 +10,6 @@ import java.util.List;
 public interface SalonRepository extends JpaRepository<Salon, Long> {
 
     List<Salon> findAllByActiveTrue();
+
+    List<Salon> findAllByIdInAndActiveTrue(Iterable<Long> ids);
 }

@@ -31,6 +31,10 @@ public class Customer extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "salon_id")
+    private Salon salon;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Appointment> appointments;
 }

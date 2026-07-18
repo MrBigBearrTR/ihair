@@ -5,6 +5,7 @@ import com.bigbear.ihair.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -39,18 +40,57 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/logout").authenticated()
                         .requestMatchers("/api/auth/register").hasRole("ADMIN")
                         .requestMatchers("/api/auth/change-password").authenticated()
-                        .requestMatchers("/api/campaigns/validate").authenticated()
-                        .requestMatchers("/api/salons/*/settings/**").hasAnyRole("ADMIN", "SALON_OWNER")
-                        .requestMatchers("/api/salons/**").hasAnyRole("ADMIN", "SALON_OWNER")
-                        .requestMatchers("/api/employees/**").hasAnyRole("ADMIN", "SALON_OWNER")
-                        .requestMatchers("/api/hair-services/**").hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers("/api/auth/me").authenticated()
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/campaigns/validate").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.GET, "/api/salons/**")
+                                .hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.PUT, "/api/salons/*/schedule")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/salons/*/holidays")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/salons/*/holidays/*")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/salons/*/holidays/*")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/salons/*/settings/**")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/salons/*/settings/**")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
+                        .requestMatchers("/api/salons/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/employees/**", "/api/hair-services/**")
+                                .hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers("/api/employees/**", "/api/hair-services/**")
+                                .hasAnyRole("ADMIN", "SALON_OWNER")
                         .requestMatchers("/api/customers/**").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
                         .requestMatchers("/api/appointments/**").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers("/api/sales/**").hasAnyRole("ADMIN", "SALON_OWNER", "EMPLOYEE")
+                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "SALON_OWNER")
                         .requestMatchers("/api/campaigns/**").hasAnyRole("ADMIN", "SALON_OWNER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write(
+                                    "{\"status\":401,\"error\":\"Unauthorized\","
+                                            + "\"code\":\"AUTHENTICATION_REQUIRED\","
+                                            + "\"message\":\"Kimlik doğrulaması gereklidir.\"}");
+                        })
+                        .accessDeniedHandler((request, response, exception) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write(
+                                    "{\"status\":403,\"error\":\"Forbidden\","
+                                            + "\"code\":\"ACCESS_DENIED\","
+                                            + "\"message\":\"Bu işlem için yetkiniz bulunmuyor.\"}");
+                        })
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -74,4 +114,5 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }

@@ -5,6 +5,9 @@
 -- ============================================================
 
 -- Mevcut tabloları temizle (bağımlılık sırasına göre)
+DROP TABLE IF EXISTS sale_payments  CASCADE;
+DROP TABLE IF EXISTS sale_items     CASCADE;
+DROP TABLE IF EXISTS sales          CASCADE;
 DROP TABLE IF EXISTS appointments   CASCADE;
 DROP TABLE IF EXISTS campaigns      CASCADE;
 DROP TABLE IF EXISTS hair_services  CASCADE;
@@ -13,6 +16,7 @@ DROP TABLE IF EXISTS salon_settings CASCADE;
 DROP TABLE IF EXISTS customers      CASCADE;
 DROP TABLE IF EXISTS salons         CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
+DROP TABLE IF EXISTS user_salon_access CASCADE;
 DROP TABLE IF EXISTS users          CASCADE;
 
 -- ============================================================
@@ -21,8 +25,13 @@ DROP TABLE IF EXISTS users          CASCADE;
 CREATE TABLE users (
     id          BIGSERIAL       PRIMARY KEY,
     username    VARCHAR(100)    NOT NULL UNIQUE,
+    first_name  VARCHAR(255),
+    last_name   VARCHAR(255),
     password    VARCHAR(255)    NOT NULL,
     role        VARCHAR(20)     NOT NULL DEFAULT 'CUSTOMER',
+    active      BOOLEAN         NOT NULL DEFAULT TRUE,
+    salon_id    BIGINT,
+    employee_id BIGINT          UNIQUE,
     created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMP,
 
@@ -35,6 +44,8 @@ COMMENT ON COLUMN users.id          IS 'Birincil anahtar, otomatik artan';
 COMMENT ON COLUMN users.username    IS 'Giriş için kullanılan benzersiz kullanıcı adı';
 COMMENT ON COLUMN users.password    IS 'BCrypt ile şifrelenmiş parola';
 COMMENT ON COLUMN users.role        IS 'Kullanıcı rolü: ADMIN, SALON_OWNER, EMPLOYEE, CUSTOMER';
+COMMENT ON COLUMN users.salon_id    IS 'SALON_OWNER ve EMPLOYEE kullanıcısının güvenli salon kapsamı';
+COMMENT ON COLUMN users.employee_id IS 'EMPLOYEE rolündeki kullanıcının çalışan kaydı';
 COMMENT ON COLUMN users.created_at  IS 'Kaydın oluşturulma tarihi (otomatik)';
 COMMENT ON COLUMN users.updated_at  IS 'Kaydın son güncellenme tarihi (otomatik)';
 
@@ -121,8 +132,12 @@ CREATE TABLE customers (
     email       VARCHAR(255)    UNIQUE,
     active      BOOLEAN         NOT NULL DEFAULT TRUE,
     notes       TEXT,
+    salon_id    BIGINT,
     created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP
+    updated_at  TIMESTAMP,
+
+    CONSTRAINT fk_customers_salon
+        FOREIGN KEY (salon_id) REFERENCES salons(id)
 );
 
 COMMENT ON TABLE  customers             IS 'Randevu alan müşteri bilgilerini tutar';
@@ -144,14 +159,16 @@ CREATE TABLE hair_services (
     name               VARCHAR(255)     NOT NULL,
     description        TEXT,
     price              NUMERIC(10, 2)   NOT NULL,
-    duration_minutes   INTEGER          NOT NULL,
+    duration_minutes   INTEGER          NOT NULL DEFAULT 30,
     active             BOOLEAN          NOT NULL DEFAULT TRUE,
     salon_id           BIGINT           NOT NULL,
     created_at         TIMESTAMP        NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMP,
 
     CONSTRAINT fk_hair_services_salon
-        FOREIGN KEY (salon_id) REFERENCES salons(id)
+        FOREIGN KEY (salon_id) REFERENCES salons(id),
+    CONSTRAINT chk_hair_services_duration
+        CHECK (duration_minutes > 0)
 );
 
 COMMENT ON TABLE  hair_services                   IS 'Salonların sunduğu hizmetleri (kesim, boya, vb.) tutar';
@@ -179,6 +196,7 @@ CREATE TABLE campaigns (
     used_count           INTEGER          NOT NULL DEFAULT 0,
     is_customer_specific BOOLEAN          NOT NULL DEFAULT FALSE,
     customer_id          BIGINT,
+    salon_id             BIGINT,
     valid_from           TIMESTAMP,
     valid_to             TIMESTAMP,
     active               BOOLEAN          NOT NULL DEFAULT TRUE,
@@ -187,6 +205,8 @@ CREATE TABLE campaigns (
 
     CONSTRAINT fk_campaigns_customer
         FOREIGN KEY (customer_id) REFERENCES customers(id),
+    CONSTRAINT fk_campaigns_salon
+        FOREIGN KEY (salon_id) REFERENCES salons(id),
     CONSTRAINT chk_campaigns_discount_type
         CHECK (discount_type IN ('PERCENTAGE', 'FIXED_AMOUNT', 'FREE_SESSION')),
     CONSTRAINT chk_campaigns_discount_value
@@ -206,6 +226,7 @@ COMMENT ON COLUMN campaigns.max_usage_count        IS 'Maksimum kullanım sayıs
 COMMENT ON COLUMN campaigns.used_count             IS 'Kampanyanın şimdiye kadar kullanılma sayısı';
 COMMENT ON COLUMN campaigns.is_customer_specific   IS 'true ise yalnızca customer_id alanındaki müşteriye özeldir';
 COMMENT ON COLUMN campaigns.customer_id            IS 'Müşteriye özel kampanyalarda hedef müşterinin yabancı anahtarı';
+COMMENT ON COLUMN campaigns.salon_id               IS 'Kampanyanın ait olduğu salon; eski kapsam dışı kayıtlar için NULL olabilir';
 COMMENT ON COLUMN campaigns.valid_from             IS 'Kampanyanın geçerlilik başlangıç tarihi; NULL ise hemen geçerli';
 COMMENT ON COLUMN campaigns.valid_to               IS 'Kampanyanın geçerlilik bitiş tarihi; NULL ise süresiz';
 COMMENT ON COLUMN campaigns.active                 IS 'Kampanyanın aktiflik durumu; false ise soft delete (pasif)';
@@ -285,6 +306,69 @@ COMMENT ON COLUMN appointments.created_at             IS 'Kaydın oluşturulma t
 COMMENT ON COLUMN appointments.updated_at             IS 'Kaydın son güncellenme tarihi (otomatik)';
 
 -- ============================================================
+-- SALES - Satışlar, satırlar ve ödemeler
+-- ============================================================
+CREATE TABLE sales (
+    id                    BIGSERIAL PRIMARY KEY,
+    salon_id              BIGINT NOT NULL REFERENCES salons(id),
+    customer_id           BIGINT NOT NULL REFERENCES customers(id),
+    source_appointment_id BIGINT UNIQUE REFERENCES appointments(id),
+    created_by            BIGINT NOT NULL REFERENCES users(id),
+    status                VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    subtotal              NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    total_amount           NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    completed_at          TIMESTAMP,
+    cancelled_at          TIMESTAMP,
+    notes                 TEXT,
+    created_at            TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMP,
+    CONSTRAINT chk_sales_status CHECK (status IN ('OPEN', 'COMPLETED', 'CANCELLED')),
+    CONSTRAINT chk_sales_amounts CHECK (subtotal >= 0 AND total_amount >= 0),
+    CONSTRAINT chk_sales_lifecycle CHECK (
+        (status = 'OPEN' AND completed_at IS NULL AND cancelled_at IS NULL)
+        OR (status = 'COMPLETED' AND completed_at IS NOT NULL AND cancelled_at IS NULL)
+        OR (status = 'CANCELLED' AND completed_at IS NULL AND cancelled_at IS NOT NULL)
+    )
+);
+
+CREATE TABLE sale_items (
+    id                     BIGSERIAL PRIMARY KEY,
+    sale_id                BIGINT NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    hair_service_id        BIGINT NOT NULL REFERENCES hair_services(id),
+    employee_id            BIGINT NOT NULL REFERENCES employees(id),
+    quantity               INTEGER NOT NULL,
+    position               INTEGER NOT NULL,
+    unit_price             NUMERIC(12, 2) NOT NULL,
+    list_price             NUMERIC(12, 2) NOT NULL,
+    line_total             NUMERIC(12, 2) NOT NULL,
+    service_name_snapshot  VARCHAR(255) NOT NULL,
+    employee_name_snapshot VARCHAR(255) NOT NULL,
+    created_at             TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at             TIMESTAMP,
+    CONSTRAINT chk_sale_items_quantity CHECK (quantity BETWEEN 1 AND 100),
+    CONSTRAINT chk_sale_items_position CHECK (position >= 0),
+    CONSTRAINT chk_sale_items_amounts
+        CHECK (unit_price >= 0 AND list_price >= 0 AND line_total >= 0),
+    CONSTRAINT uq_sale_items_position UNIQUE (sale_id, position)
+);
+
+CREATE TABLE sale_payments (
+    id         BIGSERIAL PRIMARY KEY,
+    sale_id    BIGINT NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    method     VARCHAR(30) NOT NULL,
+    amount     NUMERIC(12, 2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP,
+    CONSTRAINT chk_sale_payments_method
+        CHECK (method IN ('CASH', 'CARD', 'BANK_TRANSFER')),
+    CONSTRAINT chk_sale_payments_amount CHECK (amount >= 0)
+);
+
+COMMENT ON TABLE sales IS 'Açık, tamamlanmış ve iptal edilmiş finansal satış kayıtları';
+COMMENT ON TABLE sale_items IS 'Satış anındaki hizmet, çalışan ve fiyat snapshot satırları';
+COMMENT ON TABLE sale_payments IS 'Satış ödemeleri; veri modeli çoklu ödemeye hazırdır';
+
+-- ============================================================
 -- İNDEKSLER - Sık sorgulanan kolonlar için performans
 -- ============================================================
 CREATE INDEX idx_employees_salon_id              ON employees(salon_id);
@@ -292,17 +376,38 @@ CREATE INDEX idx_employees_active                ON employees(active);
 CREATE INDEX idx_hair_services_salon_id          ON hair_services(salon_id);
 CREATE INDEX idx_hair_services_active            ON hair_services(active);
 CREATE INDEX idx_customers_active                ON customers(active);
+CREATE INDEX idx_customers_salon_id              ON customers(salon_id);
 CREATE INDEX idx_salons_active                   ON salons(active);
 CREATE INDEX idx_appointments_customer_id        ON appointments(customer_id);
 CREATE INDEX idx_appointments_employee_id        ON appointments(employee_id);
 CREATE INDEX idx_appointments_status             ON appointments(status);
 CREATE INDEX idx_appointments_datetime           ON appointments(appointment_date_time);
 CREATE INDEX idx_appointments_campaign_id        ON appointments(campaign_id);
+CREATE INDEX idx_sales_salon_id                  ON sales(salon_id);
+CREATE INDEX idx_sales_customer_id               ON sales(customer_id);
+CREATE INDEX idx_sales_status                    ON sales(status);
+CREATE INDEX idx_sales_completed_at              ON sales(completed_at);
+CREATE INDEX idx_sale_items_sale_id               ON sale_items(sale_id);
+CREATE INDEX idx_sale_items_employee_id           ON sale_items(employee_id);
+CREATE INDEX idx_sale_payments_sale_id            ON sale_payments(sale_id);
 CREATE INDEX idx_campaigns_code                  ON campaigns(code);
 CREATE INDEX idx_campaigns_active                ON campaigns(active);
 CREATE INDEX idx_campaigns_customer_id           ON campaigns(customer_id);
+CREATE INDEX idx_campaigns_salon_id              ON campaigns(salon_id);
 CREATE INDEX idx_salon_settings_salon_id         ON salon_settings(salon_id);
 CREATE INDEX idx_salon_settings_key              ON salon_settings(setting_key);
+
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_salon FOREIGN KEY (salon_id) REFERENCES salons(id),
+    ADD CONSTRAINT fk_users_employee FOREIGN KEY (employee_id) REFERENCES employees(id);
+CREATE INDEX idx_users_salon_id ON users(salon_id);
+
+CREATE TABLE user_salon_access (
+    user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    salon_id BIGINT NOT NULL REFERENCES salons(id) ON DELETE CASCADE,
+    CONSTRAINT uq_user_salon_access UNIQUE (user_id, salon_id)
+);
+CREATE INDEX idx_user_salon_access_salon_id ON user_salon_access(salon_id);
 
 -- ============================================================
 -- Başarı mesajı
@@ -319,4 +424,7 @@ BEGIN
     RAISE NOTICE '  - campaigns';
     RAISE NOTICE '  - salon_settings';
     RAISE NOTICE '  - appointments';
+    RAISE NOTICE '  - sales';
+    RAISE NOTICE '  - sale_items';
+    RAISE NOTICE '  - sale_payments';
 END $$;

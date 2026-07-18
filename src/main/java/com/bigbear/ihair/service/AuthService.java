@@ -5,6 +5,7 @@ import com.bigbear.ihair.dto.request.LoginRequestDto;
 import com.bigbear.ihair.dto.request.RefreshTokenRequestDto;
 import com.bigbear.ihair.dto.request.RegisterRequestDto;
 import com.bigbear.ihair.dto.response.AuthResponseDto;
+import com.bigbear.ihair.dto.response.UserResponseDto;
 
 public interface AuthService {
 
@@ -17,4 +18,6 @@ public interface AuthService {
     void logout(RefreshTokenRequestDto request);
 
     void changePassword(String username, ChangePasswordRequestDto request);
+
+    UserResponseDto getMe(String username);
 }

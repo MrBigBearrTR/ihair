@@ -9,6 +9,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
@@ -20,17 +21,30 @@ public class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!userRepository.existsByRole(Role.ADMIN)) {
+        String resetPassword = System.getenv("IHAIR_ADMIN_RESET_PASSWORD");
+
+        if (userRepository.findByUsername("admin").isEmpty()) {
             User admin = new User();
             admin.setUsername("admin");
             admin.setFirstName("Admin");
             admin.setLastName("User");
-            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setPassword(passwordEncoder.encode(
+                    StringUtils.hasText(resetPassword) ? resetPassword : "admin123"));
             admin.setRole(Role.ADMIN);
             userRepository.save(admin);
             log.info(">>> Varsayılan admin kullanıcısı oluşturuldu.");
-            log.info(">>> Kullanıcı adı: admin | Şifre: admin123");
+            log.info(">>> Kullanıcı adı: admin");
             log.info(">>> Güvenlik için ilk girişten sonra şifrenizi değiştirin!");
+            return;
+        }
+
+        if (StringUtils.hasText(resetPassword)) {
+            User admin = userRepository.findByUsername("admin")
+                    .orElseThrow(() -> new IllegalStateException(
+                            "ADMIN rolü mevcut ancak 'admin' kullanıcısı bulunamadı."));
+            admin.setPassword(passwordEncoder.encode(resetPassword));
+            userRepository.save(admin);
+            log.warn(">>> Admin şifresi IHAIR_ADMIN_RESET_PASSWORD ile sıfırlandı.");
         }
     }
 }

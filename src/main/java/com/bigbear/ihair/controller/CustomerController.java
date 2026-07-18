@@ -18,8 +18,9 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @GetMapping
-    public ResponseEntity<List<CustomerResponseDto>> getAll() {
-        return ResponseEntity.ok(customerService.getAll());
+    public ResponseEntity<List<CustomerResponseDto>> getAll(
+            @RequestParam(required = false) Long salonId) {
+        return ResponseEntity.ok(customerService.getAll(salonId));
     }
 
     @GetMapping("/{id}")
