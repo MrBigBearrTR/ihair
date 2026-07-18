@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ihair-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JAVA_OPTS
+        value: -Xmx384m -Xss512k -XX:+UseG1GC
