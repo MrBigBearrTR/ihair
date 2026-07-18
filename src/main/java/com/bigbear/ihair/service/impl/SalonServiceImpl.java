@@ -5,29 +5,37 @@ import com.bigbear.ihair.dto.response.SalonResponseDto;
 import com.bigbear.ihair.entity.Salon;
 import com.bigbear.ihair.exception.ResourceNotFoundException;
 import com.bigbear.ihair.repository.SalonRepository;
+import com.bigbear.ihair.security.SalonAccessService;
 import com.bigbear.ihair.service.SalonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class SalonServiceImpl implements SalonService {
 
     private final SalonRepository salonRepository;
+    private final SalonAccessService salonAccessService;
 
     @Override
     @Transactional(readOnly = true)
     public List<SalonResponseDto> getAll() {
-        return salonRepository.findAllByActiveTrue().stream()
+        Set<Long> salonIds = salonAccessService.resolveSalonIdsForList(null);
+        List<Salon> salons = salonIds == null
+                ? salonRepository.findAllByActiveTrue()
+                : salonRepository.findAllByIdInAndActiveTrue(salonIds);
+        return salons.stream()
                 .map(SalonResponseDto::new).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public SalonResponseDto getById(Long id) {
+        salonAccessService.requireSalonAccess(id);
         return new SalonResponseDto(findActiveById(id));
     }
 

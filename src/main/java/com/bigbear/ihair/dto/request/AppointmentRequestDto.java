@@ -14,4 +14,7 @@ public class AppointmentRequestDto {
     private AppointmentStatus status;
     private String notes;
     private String campaignCode;
+    private Boolean overrideOutsideWorkingHours;
+    private String overrideReason;
+    private Long version;
 }

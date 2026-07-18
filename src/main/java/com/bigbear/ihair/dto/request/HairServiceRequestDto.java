@@ -9,6 +9,6 @@ public class HairServiceRequestDto {
     private String name;
     private String description;
     private BigDecimal price;
-    private Integer durationMinutes;
+    private Integer durationMinutes = 30;
     private Long salonId;
 }

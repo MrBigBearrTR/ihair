@@ -14,6 +14,7 @@ public class CustomerResponseDto {
     private final String email;
     private final Boolean active;
     private final String notes;
+    private final Long salonId;
     private final LocalDateTime createdAt;
 
     public CustomerResponseDto(Customer customer) {
@@ -24,6 +25,7 @@ public class CustomerResponseDto {
         this.email = customer.getEmail();
         this.active = customer.getActive();
         this.notes = customer.getNotes();
+        this.salonId = customer.getSalon() != null ? customer.getSalon().getId() : null;
         this.createdAt = customer.getCreatedAt();
     }
 }

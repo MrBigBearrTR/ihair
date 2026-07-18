@@ -11,6 +11,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     List<Customer> findAllByActiveTrue();
 
+    List<Customer> findAllBySalonIdAndActiveTrue(Long salonId);
+
+    List<Customer> findAllBySalonIdInAndActiveTrue(Iterable<Long> salonIds);
+
     boolean existsByPhone(String phone);
 
     boolean existsByPhoneAndIdNot(String phone, Long id);

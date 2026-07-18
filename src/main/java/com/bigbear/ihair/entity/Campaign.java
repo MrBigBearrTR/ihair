@@ -43,6 +43,10 @@ public class Campaign extends BaseEntity {
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "salon_id")
+    private Salon salon;
+
     private LocalDateTime validFrom;
 
     private LocalDateTime validTo;

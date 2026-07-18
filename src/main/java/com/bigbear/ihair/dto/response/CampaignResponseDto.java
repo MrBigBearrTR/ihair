@@ -20,6 +20,7 @@ public class CampaignResponseDto {
     private final Boolean isCustomerSpecific;
     private final Long customerId;
     private final String customerName;
+    private final Long salonId;
     private final LocalDateTime validFrom;
     private final LocalDateTime validTo;
     private final Boolean active;
@@ -39,6 +40,7 @@ public class CampaignResponseDto {
         this.customerName = campaign.getCustomer() != null
                 ? campaign.getCustomer().getFirstName() + " " + campaign.getCustomer().getLastName()
                 : null;
+        this.salonId = campaign.getSalon() != null ? campaign.getSalon().getId() : null;
         this.validFrom = campaign.getValidFrom();
         this.validTo = campaign.getValidTo();
         this.active = campaign.getActive();

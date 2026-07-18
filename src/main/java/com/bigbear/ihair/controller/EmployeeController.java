@@ -6,6 +6,7 @@ import com.bigbear.ihair.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,26 +19,31 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALON_OWNER', 'EMPLOYEE')")
     public ResponseEntity<List<EmployeeResponseDto>> getAll(@RequestParam(required = false) Long salonId) {
         return ResponseEntity.ok(employeeService.getAll(salonId));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALON_OWNER', 'EMPLOYEE')")
     public ResponseEntity<EmployeeResponseDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.getById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALON_OWNER')")
     public ResponseEntity<EmployeeResponseDto> create(@RequestBody EmployeeRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALON_OWNER')")
     public ResponseEntity<EmployeeResponseDto> update(@PathVariable Long id, @RequestBody EmployeeRequestDto request) {
         return ResponseEntity.ok(employeeService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALON_OWNER')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         employeeService.delete(id);
         return ResponseEntity.noContent().build();

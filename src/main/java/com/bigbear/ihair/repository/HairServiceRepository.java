@@ -12,4 +12,6 @@ public interface HairServiceRepository extends JpaRepository<HairService, Long> 
     List<HairService> findAllByActiveTrue();
 
     List<HairService> findAllBySalonIdAndActiveTrue(Long salonId);
+
+    List<HairService> findAllBySalonIdInAndActiveTrue(Iterable<Long> salonIds);
 }

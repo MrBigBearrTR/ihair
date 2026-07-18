@@ -27,8 +27,16 @@ public class Appointment extends BaseEntity {
     @JoinColumn(name = "hair_service_id", nullable = false)
     private HairService hairService;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "salon_id")
+    private Salon salon;
+
     @Column(nullable = false)
     private LocalDateTime appointmentDateTime;
+
+    private Integer durationMinutesSnapshot;
+
+    private LocalDateTime endsAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -42,4 +50,21 @@ public class Appointment extends BaseEntity {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal finalPrice;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean scheduleOverridden = false;
+
+    private String scheduleOverrideReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "schedule_override_by")
+    private User scheduleOverrideBy;
+
+    private LocalDateTime scheduleOverrideAt;
+
+    @Version
+    private Long version;
+
+    @OneToOne(mappedBy = "sourceAppointment", fetch = FetchType.LAZY)
+    private Sale sale;
 }

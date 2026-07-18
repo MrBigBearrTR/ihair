@@ -5,6 +5,7 @@ import com.bigbear.ihair.dto.request.LoginRequestDto;
 import com.bigbear.ihair.dto.request.RefreshTokenRequestDto;
 import com.bigbear.ihair.dto.request.RegisterRequestDto;
 import com.bigbear.ihair.dto.response.AuthResponseDto;
+import com.bigbear.ihair.dto.response.UserResponseDto;
 import com.bigbear.ihair.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -47,5 +48,10 @@ public class AuthController {
             @RequestBody ChangePasswordRequestDto request) {
         authService.changePassword(userDetails.getUsername(), request);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDto> getMe(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(authService.getMe(userDetails.getUsername()));
     }
 }

@@ -12,6 +12,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     List<Campaign> findAllByActiveTrue();
 
+    List<Campaign> findAllBySalonIdAndActiveTrue(Long salonId);
+
+    List<Campaign> findAllBySalonIdInAndActiveTrue(Iterable<Long> salonIds);
+
     Optional<Campaign> findByCode(String code);
 
     boolean existsByCode(String code);

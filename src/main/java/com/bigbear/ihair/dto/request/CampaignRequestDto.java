@@ -16,6 +16,7 @@ public class CampaignRequestDto {
     private Integer maxUsageCount;
     private Boolean isCustomerSpecific;
     private Long customerId;
+    private Long salonId;
     private LocalDateTime validFrom;
     private LocalDateTime validTo;
 }

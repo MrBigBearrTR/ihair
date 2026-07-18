@@ -22,7 +22,7 @@ public class HairService extends BaseEntity {
     private BigDecimal price;
 
     @Column(nullable = false)
-    private Integer durationMinutes;
+    private Integer durationMinutes = 30;
 
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean active = true;
