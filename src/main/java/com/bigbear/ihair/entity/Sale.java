@@ -1,6 +1,7 @@
 package com.bigbear.ihair.entity;
 
 import com.bigbear.ihair.common.BaseEntity;
+import com.bigbear.ihair.entity.enums.DiscountType;
 import com.bigbear.ihair.entity.enums.SaleStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -44,6 +45,19 @@ public class Sale extends BaseEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_id")
+    private Campaign campaign;
+    private String campaignCodeSnapshot;
+    private String campaignNameSnapshot;
+    @Enumerated(EnumType.STRING)
+    private DiscountType campaignDiscountTypeSnapshot;
+    @Column(precision = 12, scale = 2)
+    private BigDecimal campaignDiscountValueSnapshot;
+    @Column(precision = 12, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private LocalDateTime campaignAppliedAt;
+
     private LocalDateTime completedAt;
     private LocalDateTime cancelledAt;
 
@@ -57,6 +71,9 @@ public class Sale extends BaseEntity {
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<SalePayment> payments = new ArrayList<>();
+
+    @Version
+    private Long version;
 
     public void addItem(SaleItem item) {
         item.setSale(this);

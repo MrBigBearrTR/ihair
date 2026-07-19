@@ -17,8 +17,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -53,11 +55,12 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     @Transactional
     public CampaignResponseDto create(CampaignRequestDto request) {
+        validateDefinition(request);
         String code = generateUniqueCode(request.getCode());
         Salon salon = findActiveSalon(salonAccessService.resolveSalonId(request.getSalonId()));
 
         Campaign campaign = new Campaign();
-        campaign.setName(request.getName());
+        campaign.setName(request.getName().trim());
         campaign.setDescription(request.getDescription());
         campaign.setCode(code);
         campaign.setDiscountType(request.getDiscountType());
@@ -68,7 +71,7 @@ public class CampaignServiceImpl implements CampaignService {
         campaign.setValidTo(request.getValidTo());
         campaign.setSalon(salon);
 
-        if (Boolean.TRUE.equals(request.getIsCustomerSpecific()) && request.getCustomerId() != null) {
+        if (Boolean.TRUE.equals(request.getIsCustomerSpecific())) {
             Customer customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Müşteri", request.getCustomerId()));
             requireCustomerSalon(customer, salon.getId());
@@ -81,20 +84,22 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     @Transactional
     public CampaignResponseDto update(Long id, CampaignRequestDto request) {
+        validateDefinition(request);
         Campaign campaign = findActiveById(id);
         salonAccessService.requireSalonAccess(campaign.getSalon() != null ? campaign.getSalon().getId() : null);
         Salon salon = request.getSalonId() == null
                 ? campaign.getSalon()
                 : findActiveSalon(salonAccessService.resolveSalonId(request.getSalonId()));
 
-        if (request.getCode() != null && !request.getCode().equalsIgnoreCase(campaign.getCode())) {
-            if (campaignRepository.existsByCode(request.getCode())) {
-                throw new DuplicateResourceException("Bu kampanya kodu zaten kullanılıyor: " + request.getCode());
+        String normalizedCode = normalizeCode(request.getCode());
+        if (normalizedCode != null && !normalizedCode.equals(campaign.getCode())) {
+            if (campaignRepository.existsByCode(normalizedCode)) {
+                throw new DuplicateResourceException("Bu kampanya kodu zaten kullanılıyor: " + normalizedCode);
             }
-            campaign.setCode(request.getCode());
+            campaign.setCode(normalizedCode);
         }
 
-        campaign.setName(request.getName());
+        campaign.setName(request.getName().trim());
         campaign.setDescription(request.getDescription());
         campaign.setDiscountType(request.getDiscountType());
         campaign.setDiscountValue(request.getDiscountValue());
@@ -104,7 +109,7 @@ public class CampaignServiceImpl implements CampaignService {
         campaign.setValidTo(request.getValidTo());
         campaign.setSalon(salon);
 
-        if (Boolean.TRUE.equals(request.getIsCustomerSpecific()) && request.getCustomerId() != null) {
+        if (Boolean.TRUE.equals(request.getIsCustomerSpecific())) {
             Customer customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Müşteri", request.getCustomerId()));
             requireCustomerSalon(customer, salon.getId());
@@ -128,7 +133,7 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     @Transactional(readOnly = true)
     public CampaignResponseDto validate(String code) {
-        Campaign campaign = campaignRepository.findByCode(code)
+        Campaign campaign = campaignRepository.findByCode(normalizeCode(code))
                 .orElseThrow(() -> new BadRequestException("Geçersiz kampanya kodu: " + code));
         salonAccessService.requireSalonAccess(campaign.getSalon() != null ? campaign.getSalon().getId() : null);
 
@@ -160,11 +165,12 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     private String generateUniqueCode(String requestedCode) {
-        if (requestedCode != null && !requestedCode.isBlank()) {
-            if (campaignRepository.existsByCode(requestedCode)) {
-                throw new DuplicateResourceException("Bu kampanya kodu zaten kullanılıyor: " + requestedCode);
+        String normalizedCode = normalizeCode(requestedCode);
+        if (normalizedCode != null) {
+            if (campaignRepository.existsByCode(normalizedCode)) {
+                throw new DuplicateResourceException("Bu kampanya kodu zaten kullanılıyor: " + normalizedCode);
             }
-            return requestedCode.toUpperCase();
+            return normalizedCode;
         }
         String code;
         do {
@@ -186,5 +192,48 @@ public class CampaignServiceImpl implements CampaignService {
         if (customer.getSalon() == null || !salonId.equals(customer.getSalon().getId())) {
             throw new BadRequestException("Müşteri ile kampanya aynı salona ait olmalıdır.");
         }
+    }
+
+    private void validateDefinition(CampaignRequestDto request) {
+        if (request == null) throw new BadRequestException("Kampanya isteği zorunludur.");
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new BadRequestException("Kampanya adı zorunludur.");
+        }
+        if (request.getDiscountType() == null || request.getDiscountValue() == null) {
+            throw new BadRequestException("İndirim tipi ve değeri zorunludur.");
+        }
+        BigDecimal value = request.getDiscountValue();
+        switch (request.getDiscountType()) {
+            case PERCENTAGE -> {
+                if (value.signum() < 0 || value.compareTo(BigDecimal.valueOf(100)) > 0) {
+                    throw new BadRequestException("Yüzde indirim değeri 0 ile 100 arasında olmalıdır.");
+                }
+            }
+            case FIXED_AMOUNT -> {
+                if (value.signum() < 0) {
+                    throw new BadRequestException("Sabit indirim değeri negatif olamaz.");
+                }
+            }
+            case FREE_SESSION -> {
+                if (value.signum() != 0) {
+                    throw new BadRequestException(
+                            "Ücretsiz seans kampanyasının indirim değeri 0 olmalıdır.");
+                }
+            }
+        }
+        if (request.getMaxUsageCount() != null && request.getMaxUsageCount() <= 0) {
+            throw new BadRequestException("Kullanım limiti pozitif olmalıdır.");
+        }
+        if (request.getValidFrom() != null && request.getValidTo() != null
+                && request.getValidTo().isBefore(request.getValidFrom())) {
+            throw new BadRequestException("Kampanya bitiş tarihi başlangıç tarihinden önce olamaz.");
+        }
+        if (Boolean.TRUE.equals(request.getIsCustomerSpecific()) && request.getCustomerId() == null) {
+            throw new BadRequestException("Müşteriye özel kampanyada customerId zorunludur.");
+        }
+    }
+
+    private String normalizeCode(String code) {
+        return code == null || code.isBlank() ? null : code.trim().toUpperCase(Locale.ROOT);
     }
 }

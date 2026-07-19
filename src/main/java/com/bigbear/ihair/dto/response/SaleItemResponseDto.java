@@ -15,6 +15,8 @@ public class SaleItemResponseDto {
     private final BigDecimal unitPrice;
     private final BigDecimal listPrice;
     private final BigDecimal lineTotal;
+    private final BigDecimal discountShare;
+    private final BigDecimal netLineTotal;
     private final String serviceName;
     private final String employeeName;
 
@@ -27,6 +29,8 @@ public class SaleItemResponseDto {
         this.unitPrice = item.getUnitPrice();
         this.listPrice = item.getListPrice();
         this.lineTotal = item.getLineTotal();
+        this.discountShare = item.getDiscountShare();
+        this.netLineTotal = item.getNetLineTotal();
         this.serviceName = item.getServiceNameSnapshot();
         this.employeeName = item.getEmployeeNameSnapshot();
     }

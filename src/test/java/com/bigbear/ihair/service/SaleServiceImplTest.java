@@ -7,6 +7,7 @@ import com.bigbear.ihair.dto.request.SaleRequestDto;
 import com.bigbear.ihair.entity.*;
 import com.bigbear.ihair.entity.enums.PaymentMethod;
 import com.bigbear.ihair.entity.enums.AppointmentStatus;
+import com.bigbear.ihair.entity.enums.DiscountType;
 import com.bigbear.ihair.entity.enums.Role;
 import com.bigbear.ihair.entity.enums.SaleStatus;
 import com.bigbear.ihair.repository.*;
@@ -39,6 +40,8 @@ class SaleServiceImplTest {
     @Mock AppointmentRepository appointmentRepository;
     @Mock HairServiceRepository hairServiceRepository;
     @Mock EmployeeRepository employeeRepository;
+    @Mock CampaignRepository campaignRepository;
+    @Mock CampaignRedemptionRepository campaignRedemptionRepository;
     @Mock SalonAccessService salonAccessService;
     @InjectMocks SaleServiceImpl service;
 
@@ -75,6 +78,47 @@ class SaleServiceImplTest {
     }
 
     @Test
+    void quoteDistributesCampaignDiscountToNetLines() {
+        Salon salon = salon();
+        Customer customer = customer(salon);
+        Employee employee = employee(salon);
+        HairService hairService = hairService(salon, "10.00");
+        Campaign campaign = new Campaign();
+        campaign.setId(7L);
+        campaign.setSalon(salon);
+        campaign.setCode("YARIM");
+        campaign.setName("Yarım fiyat");
+        campaign.setDiscountType(DiscountType.PERCENTAGE);
+        campaign.setDiscountValue(new BigDecimal("50"));
+        campaign.setUsedCount(0);
+        campaign.setActive(true);
+        campaign.setIsCustomerSpecific(false);
+        SaleRequestDto request = new SaleRequestDto();
+        request.setSalonId(1L);
+        request.setCustomerId(2L);
+        request.setCampaignCode(" yarim ");
+        SaleItemRequestDto item = new SaleItemRequestDto();
+        item.setServiceId(3L);
+        item.setEmployeeId(4L);
+        item.setQuantity(1);
+        request.setItems(List.of(item));
+        when(salonAccessService.resolveSalonId(1L)).thenReturn(1L);
+        when(salonAccessService.currentUser()).thenReturn(user(employee, Role.SALON_OWNER));
+        when(salonRepository.findById(1L)).thenReturn(Optional.of(salon));
+        when(customerRepository.findById(2L)).thenReturn(Optional.of(customer));
+        when(hairServiceRepository.findById(3L)).thenReturn(Optional.of(hairService));
+        when(employeeRepository.findById(4L)).thenReturn(Optional.of(employee));
+        when(campaignRepository.findByCode("YARIM")).thenReturn(Optional.of(campaign));
+
+        var quote = service.quote(request);
+
+        assertEquals(new BigDecimal("10.00"), quote.getSubtotal());
+        assertEquals(new BigDecimal("5.00"), quote.getDiscountAmount());
+        assertEquals(new BigDecimal("5.00"), quote.getTotalAmount());
+        assertEquals(new BigDecimal("5.00"), quote.getItems().getFirst().getNetLineTotal());
+    }
+
+    @Test
     void appointmentImportUsesFinalPriceSnapshot() {
         Salon salon = salon();
         Customer customer = customer(salon);
@@ -82,7 +126,7 @@ class SaleServiceImplTest {
         HairService hairService = hairService(salon, "15.25");
         Appointment appointment = new Appointment();
         appointment.setId(9L);
-        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointment.setStatus(AppointmentStatus.ARRIVED);
         appointment.setCustomer(customer);
         appointment.setEmployee(employee);
         appointment.setHairService(hairService);
@@ -208,18 +252,20 @@ class SaleServiceImplTest {
     }
 
     @Test
-    void availableAppointmentsIncludeConfirmedAndCompletedStatuses() {
+    void availableAppointmentsIncludeSaleEligibleActiveStatuses() {
         Salon salon = salon();
         when(salonAccessService.resolveSalonId(1L)).thenReturn(1L);
         when(salonRepository.findById(1L)).thenReturn(Optional.of(salon));
         when(appointmentRepository.findAvailableForSale(
-                1L, List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED)))
+                1L, List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED,
+                        AppointmentStatus.ARRIVED)))
                 .thenReturn(List.of());
 
         service.getAvailableAppointments(1L);
 
         verify(appointmentRepository).findAvailableForSale(
-                1L, List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED));
+                1L, List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED,
+                        AppointmentStatus.ARRIVED));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.bigbear.ihair.dto.response;
 
 import com.bigbear.ihair.entity.Sale;
+import com.bigbear.ihair.entity.enums.DiscountType;
 import com.bigbear.ihair.entity.enums.SaleStatus;
 import lombok.Getter;
 
@@ -20,7 +21,14 @@ public class SaleResponseDto {
     private final String createdByUsername;
     private final SaleStatus status;
     private final BigDecimal subtotal;
+    private final BigDecimal discountAmount;
     private final BigDecimal totalAmount;
+    private final Long campaignId;
+    private final String campaignCode;
+    private final String campaignName;
+    private final DiscountType campaignDiscountType;
+    private final BigDecimal campaignDiscountValue;
+    private final LocalDateTime campaignAppliedAt;
     private final LocalDateTime completedAt;
     private final LocalDateTime cancelledAt;
     private final String notes;
@@ -28,6 +36,7 @@ public class SaleResponseDto {
     private final List<SalePaymentResponseDto> payments;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final Long version;
 
     public SaleResponseDto(Sale sale) {
         this.id = sale.getId();
@@ -40,7 +49,14 @@ public class SaleResponseDto {
         this.createdByUsername = sale.getCreatedBy().getUsername();
         this.status = sale.getStatus();
         this.subtotal = sale.getSubtotal();
+        this.discountAmount = sale.getDiscountAmount();
         this.totalAmount = sale.getTotalAmount();
+        this.campaignId = sale.getCampaign() == null ? null : sale.getCampaign().getId();
+        this.campaignCode = sale.getCampaignCodeSnapshot();
+        this.campaignName = sale.getCampaignNameSnapshot();
+        this.campaignDiscountType = sale.getCampaignDiscountTypeSnapshot();
+        this.campaignDiscountValue = sale.getCampaignDiscountValueSnapshot();
+        this.campaignAppliedAt = sale.getCampaignAppliedAt();
         this.completedAt = sale.getCompletedAt();
         this.cancelledAt = sale.getCancelledAt();
         this.notes = sale.getNotes();
@@ -48,6 +64,7 @@ public class SaleResponseDto {
         this.payments = sale.getPayments().stream().map(SalePaymentResponseDto::new).toList();
         this.createdAt = sale.getCreatedAt();
         this.updatedAt = sale.getUpdatedAt();
+        this.version = sale.getVersion();
     }
 
     private static String fullName(String firstName, String lastName) {

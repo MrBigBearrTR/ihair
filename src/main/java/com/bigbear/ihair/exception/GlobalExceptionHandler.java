@@ -9,6 +9,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.time.LocalDateTime;
 
@@ -51,6 +54,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponseDto> handleBadRequest(BadRequestException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(PayloadTooLargeException.class)
+    public ResponseEntity<ErrorResponseDto> handlePayloadTooLarge(
+            PayloadTooLargeException ex, HttpServletRequest request) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE",
+                ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponseDto> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE",
+                "Logo dosyası en fazla 1 MB olabilir.", request.getRequestURI());
+    }
+
+    @ExceptionHandler({MultipartException.class, MissingServletRequestPartException.class})
+    public ResponseEntity<ErrorResponseDto> handleMultipart(
+            Exception ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "INVALID_MULTIPART_REQUEST",
+                "Logo dosyası multipart formunda 'file' alanıyla gönderilmelidir.",
+                request.getRequestURI());
     }
 
     @ExceptionHandler(SalonScopeException.class)
