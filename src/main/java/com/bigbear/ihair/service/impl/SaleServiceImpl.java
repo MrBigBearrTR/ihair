@@ -5,9 +5,13 @@ import com.bigbear.ihair.dto.request.SaleItemRequestDto;
 import com.bigbear.ihair.dto.request.SalePaymentRequestDto;
 import com.bigbear.ihair.dto.request.SaleRequestDto;
 import com.bigbear.ihair.dto.response.AppointmentResponseDto;
+import com.bigbear.ihair.dto.response.PagedResponseDto;
+import com.bigbear.ihair.dto.response.SaleListResponseDto;
+import com.bigbear.ihair.dto.response.SaleQuoteResponseDto;
 import com.bigbear.ihair.dto.response.SaleResponseDto;
 import com.bigbear.ihair.entity.*;
 import com.bigbear.ihair.entity.enums.AppointmentStatus;
+import com.bigbear.ihair.entity.enums.DiscountType;
 import com.bigbear.ihair.entity.enums.Role;
 import com.bigbear.ihair.entity.enums.SaleStatus;
 import com.bigbear.ihair.exception.BadRequestException;
@@ -18,6 +22,10 @@ import com.bigbear.ihair.security.SalonAccessService;
 import com.bigbear.ihair.service.SaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +33,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -34,6 +45,7 @@ import java.util.Set;
 public class SaleServiceImpl implements SaleService {
 
     private static final int MAX_QUANTITY = 100;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final BigDecimal ZERO = new BigDecimal("0.00");
 
     private final SaleRepository saleRepository;
@@ -42,6 +54,8 @@ public class SaleServiceImpl implements SaleService {
     private final AppointmentRepository appointmentRepository;
     private final HairServiceRepository hairServiceRepository;
     private final EmployeeRepository employeeRepository;
+    private final CampaignRepository campaignRepository;
+    private final CampaignRedemptionRepository campaignRedemptionRepository;
     private final SalonAccessService salonAccessService;
 
     @Override
@@ -85,6 +99,43 @@ public class SaleServiceImpl implements SaleService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<SaleListResponseDto> getPaged(
+            Long salonId, SaleStatus status, LocalDate from, LocalDate to,
+            Long employeeId, int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("page negatif olamaz; size 1 ile 100 arasında olmalıdır.");
+        }
+        if (from != null && to != null && to.isBefore(from)) {
+            throw new BadRequestException("to tarihi from tarihinden önce olamaz.");
+        }
+        Set<Long> salonIds = salonAccessService.resolveSalonIdsForList(salonId);
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.plusDays(1).atStartOfDay();
+        Specification<Sale> specification = (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (salonIds != null) predicates.add(root.get("salon").get("id").in(salonIds));
+            if (status != null) predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            if (fromDateTime != null) predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                    root.get("completedAt"), fromDateTime));
+            if (toDateTime != null) predicates.add(criteriaBuilder.lessThan(
+                    root.get("completedAt"), toDateTime));
+            if (employeeId != null) {
+                predicates.add(criteriaBuilder.equal(
+                        root.join("items").get("employee").get("id"), employeeId));
+                query.distinct(true);
+            }
+            return criteriaBuilder.and(
+                    predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        Page<SaleListResponseDto> result = saleRepository.findAll(
+                        specification,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .map(SaleListResponseDto::new);
+        return new PagedResponseDto<>(result);
+    }
+
     private List<Sale> loadSales(Long salonId, SaleStatus status) {
         Set<Long> salonIds = salonAccessService.resolveSalonIdsForList(salonId);
         List<Sale> sales;
@@ -106,6 +157,24 @@ public class SaleServiceImpl implements SaleService {
         Sale sale = findById(id);
         requireAccess(sale);
         return new SaleResponseDto(sale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SaleQuoteResponseDto quote(SaleRequestDto request) {
+        requireRequest(request);
+        Long salonId = salonAccessService.resolveSalonId(request.getSalonId());
+        Sale draft = new Sale();
+        draft.setSalon(findActiveSalon(salonId));
+        draft.setCustomer(findActiveCustomer(request.getCustomerId(), salonId));
+        applySourceAppointment(draft, request.getSourceAppointmentId(), request.getCurrentSaleId());
+        replaceItems(draft, request.getItems(), salonAccessService.currentUser());
+        boolean inherited = request.getCampaignCode() == null
+                && draft.getSourceAppointment() != null
+                && draft.getSourceAppointment().getCampaign() != null;
+        applyCampaignSelection(draft, request.getCampaignCode());
+        calculateTotals(draft);
+        return new SaleQuoteResponseDto(draft, inherited);
     }
 
     @Override
@@ -135,6 +204,7 @@ public class SaleServiceImpl implements SaleService {
                 existingSale.getItems().clear();
                 saleRepository.saveAndFlush(existingSale);
                 replaceItems(existingSale, request.getItems(), currentUser);
+                applyCampaignSelection(existingSale, request.getCampaignCode());
                 calculateTotals(existingSale);
                 return new SaleResponseDto(saleRepository.saveAndFlush(existingSale));
             }
@@ -148,6 +218,7 @@ public class SaleServiceImpl implements SaleService {
         sale.setNotes(normalizeNotes(request.getNotes()));
         applySourceAppointment(sale, request.getSourceAppointmentId(), null);
         replaceItems(sale, request.getItems(), currentUser);
+        applyCampaignSelection(sale, request.getCampaignCode());
         calculateTotals(sale);
 
         try {
@@ -179,6 +250,7 @@ public class SaleServiceImpl implements SaleService {
         // eklenmeden önce sil; aksi halde PostgreSQL unique kısıtı tetiklenir.
         saleRepository.saveAndFlush(sale);
         replaceItems(sale, request.getItems(), salonAccessService.currentUser());
+        applyCampaignSelection(sale, request.getCampaignCode());
         calculateTotals(sale);
 
         try {
@@ -204,6 +276,7 @@ public class SaleServiceImpl implements SaleService {
             throw new BadRequestException("Ürünsüz veya hizmetsiz satış tamamlanamaz.");
         }
         SalePaymentRequestDto paymentRequest = requireSinglePayment(request);
+        redeemCampaign(sale);
         calculateTotals(sale);
         BigDecimal total = money(sale.getTotalAmount());
         if (paymentRequest.getAmount() != null
@@ -247,7 +320,8 @@ public class SaleServiceImpl implements SaleService {
         findActiveSalon(resolvedSalonId);
         return appointmentRepository.findAvailableForSale(
                         resolvedSalonId,
-                        List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED))
+                        List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED,
+                                AppointmentStatus.ARRIVED))
                 .stream().map(AppointmentResponseDto::new).toList();
     }
 
@@ -274,10 +348,11 @@ public class SaleServiceImpl implements SaleService {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Randevu", appointmentId));
         Long salonId = sale.getSalon().getId();
-        if (appointment.getStatus() != AppointmentStatus.CONFIRMED
-                && appointment.getStatus() != AppointmentStatus.COMPLETED) {
+        if (appointment.getStatus() != AppointmentStatus.PENDING
+                && appointment.getStatus() != AppointmentStatus.CONFIRMED
+                && appointment.getStatus() != AppointmentStatus.ARRIVED) {
             throw new BadRequestException(
-                    "Yalnızca onaylanmış veya tamamlanmış randevular satışa aktarılabilir.");
+                    "Yalnızca bekleyen, onaylanmış veya gelmiş randevular satışa aktarılabilir.");
         }
         if (!salonId.equals(appointment.getEmployee().getSalon().getId())) {
             throw new BadRequestException("Randevu satışın salonuna ait değildir.");
@@ -293,18 +368,100 @@ public class SaleServiceImpl implements SaleService {
         sale.setSourceAppointment(appointment);
     }
 
+    private void applyCampaignSelection(Sale sale, String requestedCode) {
+        Campaign campaign = null;
+        if (requestedCode == null && sale.getSourceAppointment() != null) {
+            campaign = sale.getSourceAppointment().getCampaign();
+        } else if (requestedCode != null && !requestedCode.isBlank()) {
+            String normalizedCode = requestedCode.trim().toUpperCase(Locale.ROOT);
+            campaign = campaignRepository.findByCode(normalizedCode)
+                    .orElseThrow(() -> new BadRequestException(
+                            "Geçersiz kampanya kodu: " + normalizedCode));
+        }
+        if (campaign == null) {
+            clearCampaign(sale);
+            return;
+        }
+        validateCampaign(campaign, sale);
+        sale.setCampaign(campaign);
+        sale.setCampaignCodeSnapshot(campaign.getCode());
+        sale.setCampaignNameSnapshot(campaign.getName());
+        sale.setCampaignDiscountTypeSnapshot(campaign.getDiscountType());
+        sale.setCampaignDiscountValueSnapshot(money(campaign.getDiscountValue()));
+        sale.setCampaignAppliedAt(LocalDateTime.now());
+    }
+
+    private void clearCampaign(Sale sale) {
+        sale.setCampaign(null);
+        sale.setCampaignCodeSnapshot(null);
+        sale.setCampaignNameSnapshot(null);
+        sale.setCampaignDiscountTypeSnapshot(null);
+        sale.setCampaignDiscountValueSnapshot(null);
+        sale.setCampaignAppliedAt(null);
+        sale.setDiscountAmount(ZERO);
+    }
+
+    private void validateCampaign(Campaign campaign, Sale sale) {
+        if (!Boolean.TRUE.equals(campaign.getActive())) {
+            throw new BadRequestException("Bu kampanya artık aktif değil.");
+        }
+        if (campaign.getSalon() == null
+                || !sale.getSalon().getId().equals(campaign.getSalon().getId())) {
+            throw new BadRequestException("Kampanya satışın salonuna ait değildir.");
+        }
+        if (Boolean.TRUE.equals(campaign.getIsCustomerSpecific())
+                && (campaign.getCustomer() == null
+                || !sale.getCustomer().getId().equals(campaign.getCustomer().getId()))) {
+            throw new BadRequestException("Bu kampanya seçilen müşteriye ait değildir.");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (campaign.getValidFrom() != null && now.isBefore(campaign.getValidFrom())) {
+            throw new BadRequestException("Kampanya henüz başlamamış.");
+        }
+        if (campaign.getValidTo() != null && now.isAfter(campaign.getValidTo())) {
+            throw new BadRequestException("Kampanyanın geçerlilik süresi dolmuş.");
+        }
+        if (campaign.getMaxUsageCount() != null
+                && campaign.getUsedCount() >= campaign.getMaxUsageCount()) {
+            throw new BadRequestException("Kampanya kullanım limiti dolmuş.");
+        }
+    }
+
+    private void redeemCampaign(Sale sale) {
+        if (sale.getCampaign() == null) return;
+        if (sale.getId() != null && campaignRedemptionRepository.existsBySaleId(sale.getId())) return;
+        Campaign campaign = campaignRepository.findWithLockById(sale.getCampaign().getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Kampanya", sale.getCampaign().getId()));
+        validateCampaign(campaign, sale);
+        campaign.setUsedCount(campaign.getUsedCount() + 1);
+        campaignRepository.save(campaign);
+
+        CampaignRedemption redemption = new CampaignRedemption();
+        redemption.setSale(sale);
+        redemption.setCampaign(campaign);
+        redemption.setSalon(sale.getSalon());
+        redemption.setCustomer(sale.getCustomer());
+        redemption.setRedeemedAt(LocalDateTime.now());
+        campaignRedemptionRepository.save(redemption);
+        sale.setCampaign(campaign);
+    }
+
     private void replaceItems(Sale sale, List<SaleItemRequestDto> requests, User currentUser) {
         Set<Integer> positions = new HashSet<>();
         int nextPosition = 0;
         if (sale.getSourceAppointment() != null) {
             Appointment appointment = sale.getSourceAppointment();
+            BigDecimal importedPrice = appointment.getCampaign() == null
+                    ? appointment.getFinalPrice()
+                    : appointment.getHairService().getPrice();
             SaleItem imported = createItem(
                     sale,
                     appointment.getHairService(),
                     appointment.getEmployee(),
                     1,
                     nextPosition++,
-                    appointment.getFinalPrice());
+                    importedPrice);
             sale.addItem(imported);
             positions.add(imported.getPosition());
         }
@@ -347,6 +504,8 @@ public class SaleServiceImpl implements SaleService {
         item.setUnitPrice(safeUnitPrice);
         item.setListPrice(listPrice);
         item.setLineTotal(money(safeUnitPrice.multiply(BigDecimal.valueOf(quantity))));
+        item.setDiscountShare(ZERO);
+        item.setNetLineTotal(item.getLineTotal());
         item.setServiceNameSnapshot(service.getName());
         item.setEmployeeNameSnapshot(fullName(employee.getFirstName(), employee.getLastName()));
         return item;
@@ -370,8 +529,59 @@ public class SaleServiceImpl implements SaleService {
         BigDecimal subtotal = sale.getItems().stream()
                 .map(SaleItem::getLineTotal)
                 .reduce(ZERO, BigDecimal::add);
-        sale.setSubtotal(money(subtotal));
-        sale.setTotalAmount(money(subtotal));
+        subtotal = money(subtotal);
+        BigDecimal discount = calculateDiscount(sale, subtotal);
+        sale.setSubtotal(subtotal);
+        sale.setDiscountAmount(discount);
+        sale.setTotalAmount(money(subtotal.subtract(discount)));
+        allocateDiscount(sale.getItems(), subtotal, discount);
+    }
+
+    private BigDecimal calculateDiscount(Sale sale, BigDecimal subtotal) {
+        DiscountType type = sale.getCampaignDiscountTypeSnapshot();
+        BigDecimal value = sale.getCampaignDiscountValueSnapshot();
+        if (type == null || value == null || subtotal.signum() == 0) return ZERO;
+        BigDecimal discount = switch (type) {
+            case PERCENTAGE -> subtotal.multiply(value)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            case FIXED_AMOUNT -> money(value);
+            case FREE_SESSION -> subtotal;
+        };
+        return money(discount.min(subtotal).max(ZERO));
+    }
+
+    private void allocateDiscount(List<SaleItem> items, BigDecimal subtotal, BigDecimal discount) {
+        items.forEach(item -> {
+            item.setDiscountShare(ZERO);
+            item.setNetLineTotal(money(item.getLineTotal()));
+        });
+        if (subtotal.signum() <= 0 || discount.signum() <= 0) return;
+
+        List<DiscountAllocation> allocations = new ArrayList<>();
+        BigDecimal allocated = ZERO;
+        for (SaleItem item : items) {
+            if (item.getLineTotal().signum() <= 0) continue;
+            BigDecimal raw = discount.multiply(item.getLineTotal())
+                    .divide(subtotal, 12, RoundingMode.HALF_UP);
+            BigDecimal base = raw.setScale(2, RoundingMode.DOWN);
+            item.setDiscountShare(base);
+            allocated = allocated.add(base);
+            allocations.add(new DiscountAllocation(item, raw.subtract(base)));
+        }
+        allocations.sort(Comparator
+                .comparing(DiscountAllocation::remainder).reversed()
+                .thenComparing(allocation -> allocation.item().getPosition()));
+        int remainingCents = money(discount.subtract(allocated))
+                .movePointRight(2).intValueExact();
+        for (int i = 0; i < remainingCents; i++) {
+            SaleItem item = allocations.get(i % allocations.size()).item();
+            item.setDiscountShare(item.getDiscountShare().add(new BigDecimal("0.01")));
+        }
+        items.forEach(item -> item.setNetLineTotal(
+                money(item.getLineTotal().subtract(item.getDiscountShare()))));
+    }
+
+    private record DiscountAllocation(SaleItem item, BigDecimal remainder) {
     }
 
     private SalePaymentRequestDto requireSinglePayment(CompleteSaleRequestDto request) {

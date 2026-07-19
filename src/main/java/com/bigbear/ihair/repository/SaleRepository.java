@@ -3,7 +3,12 @@ package com.bigbear.ihair.repository;
 import com.bigbear.ihair.entity.Sale;
 import com.bigbear.ihair.entity.enums.SaleStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +19,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SaleRepository extends JpaRepository<Sale, Long> {
+public interface SaleRepository extends JpaRepository<Sale, Long>, JpaSpecificationExecutor<Sale> {
+
+    @Override
+    @EntityGraph(attributePaths = {"salon", "customer", "sourceAppointment", "createdBy", "campaign"})
+    Page<Sale> findAll(Specification<Sale> specification, Pageable pageable);
 
     List<Sale> findAllByOrderByCreatedAtDesc();
 

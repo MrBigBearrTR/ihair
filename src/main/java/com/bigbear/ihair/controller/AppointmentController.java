@@ -4,6 +4,8 @@ import com.bigbear.ihair.dto.request.AppointmentRequestDto;
 import com.bigbear.ihair.dto.request.AppointmentStatusRequestDto;
 import com.bigbear.ihair.dto.response.AppointmentResponseDto;
 import com.bigbear.ihair.dto.response.AppointmentWeekResponseDto;
+import com.bigbear.ihair.dto.response.PagedResponseDto;
+import com.bigbear.ihair.entity.enums.AppointmentStatus;
 import com.bigbear.ihair.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,19 @@ public class AppointmentController {
     public ResponseEntity<List<AppointmentResponseDto>> getAll(
             @RequestParam(required = false) Long salonId) {
         return ResponseEntity.ok(appointmentService.getAll(salonId));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<PagedResponseDto<AppointmentResponseDto>> getPaged(
+            @RequestParam(required = false) Long salonId,
+            @RequestParam(required = false) AppointmentStatus status,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return ResponseEntity.ok(
+                appointmentService.getPaged(salonId, status, active, from, to, page, size));
     }
 
     @GetMapping("/week")

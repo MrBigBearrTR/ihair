@@ -126,7 +126,7 @@ public class ReportServiceImpl implements ReportService {
                 MutableGroup group = grouped.computeIfAbsent(
                         employeeId,
                         id -> new MutableGroup(String.valueOf(id), item.getEmployeeNameSnapshot(), id));
-                group.revenue = group.revenue.add(item.getLineTotal());
+                group.revenue = group.revenue.add(item.getNetLineTotal());
                 group.saleIds.add(sale.getId());
                 group.itemCount += item.getQuantity();
             }
@@ -159,7 +159,7 @@ public class ReportServiceImpl implements ReportService {
 
     private BigDecimal itemRevenue(Sale sale, Long employeeId) {
         return matchingItems(sale, employeeId).stream()
-                .map(SaleItem::getLineTotal)
+                .map(SaleItem::getNetLineTotal)
                 .reduce(ZERO, BigDecimal::add);
     }
 

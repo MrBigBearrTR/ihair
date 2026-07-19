@@ -41,6 +41,12 @@ public class SaleItem extends BaseEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal lineTotal;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal discountShare = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal netLineTotal = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private String serviceNameSnapshot;
 

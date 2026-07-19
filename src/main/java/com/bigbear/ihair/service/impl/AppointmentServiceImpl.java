@@ -4,6 +4,7 @@ import com.bigbear.ihair.dto.request.AppointmentRequestDto;
 import com.bigbear.ihair.dto.request.AppointmentStatusRequestDto;
 import com.bigbear.ihair.dto.response.AppointmentResponseDto;
 import com.bigbear.ihair.dto.response.AppointmentWeekResponseDto;
+import com.bigbear.ihair.dto.response.PagedResponseDto;
 import com.bigbear.ihair.entity.Appointment;
 import com.bigbear.ihair.entity.Campaign;
 import com.bigbear.ihair.entity.Customer;
@@ -25,7 +26,8 @@ import com.bigbear.ihair.security.SalonAccessService;
 import com.bigbear.ihair.service.AppointmentService;
 import com.bigbear.ihair.service.SalonScheduleService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,12 +37,14 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AppointmentServiceImpl implements AppointmentService {
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final AppointmentRepository appointmentRepository;
     private final CustomerRepository customerRepository;
@@ -51,7 +55,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final SalonScheduleService salonScheduleService;
 
     private static final List<AppointmentStatus> ACTIVE_STATUSES = List.of(
-            AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED
+            AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.ARRIVED
     );
 
     @Override
@@ -69,6 +73,50 @@ public class AppointmentServiceImpl implements AppointmentService {
                 : appointmentRepository.findAllByEmployeeSalonIdInOrderByAppointmentDateTimeDesc(salonIds);
         return appointments
                 .stream().map(AppointmentResponseDto::new).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<AppointmentResponseDto> getPaged(
+            Long salonId, AppointmentStatus status, Boolean active,
+            LocalDate from, LocalDate to, int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("page negatif olamaz; size 1 ile 100 arasında olmalıdır.");
+        }
+        if (from != null && to != null && to.isBefore(from)) {
+            throw new BadRequestException("to tarihi from tarihinden önce olamaz.");
+        }
+        Set<Long> salonIds = salonAccessService.resolveSalonIdsForList(salonId);
+        Long employeeId = salonAccessService.currentRole() == Role.EMPLOYEE
+                ? salonAccessService.currentEmployeeId() : null;
+        List<AppointmentStatus> selectedStatuses = status != null
+                ? List.of(status)
+                : Boolean.TRUE.equals(active)
+                        ? ACTIVE_STATUSES
+                        : Boolean.FALSE.equals(active)
+                                ? List.of(AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED)
+                                : List.of(AppointmentStatus.values());
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.plusDays(1).atStartOfDay();
+        Specification<Appointment> specification = (root, query, criteriaBuilder) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (salonIds != null) predicates.add(root.get("salon").get("id").in(salonIds));
+            if (employeeId != null) predicates.add(criteriaBuilder.equal(
+                    root.get("employee").get("id"), employeeId));
+            predicates.add(root.get("status").in(selectedStatuses));
+            if (fromDateTime != null) predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                    root.get("appointmentDateTime"), fromDateTime));
+            if (toDateTime != null) predicates.add(criteriaBuilder.lessThan(
+                    root.get("appointmentDateTime"), toDateTime));
+            return criteriaBuilder.and(
+                    predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        Page<AppointmentResponseDto> result = appointmentRepository.findAll(
+                        specification,
+                        PageRequest.of(page, size,
+                                Sort.by(Sort.Direction.DESC, "appointmentDateTime")))
+                .map(AppointmentResponseDto::new);
+        return new PagedResponseDto<>(result);
     }
 
     @Override
@@ -286,7 +334,8 @@ public class AppointmentServiceImpl implements AppointmentService {
             return;
         }
 
-        Campaign campaign = campaignRepository.findByCode(campaignCode)
+        String normalizedCode = campaignCode.trim().toUpperCase(Locale.ROOT);
+        Campaign campaign = campaignRepository.findByCode(normalizedCode)
                 .orElseThrow(() -> new BadRequestException("Geçersiz kampanya kodu: " + campaignCode));
         if (campaign.getSalon() == null || !salonId.equals(campaign.getSalon().getId())) {
             throw new BadRequestException("Kampanya randevu salonuna ait değildir.");
@@ -307,7 +356,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (campaign.getValidTo() != null && now.isAfter(campaign.getValidTo())) {
             throw new BadRequestException("Kampanyanın geçerlilik süresi dolmuş.");
         }
-        if (incrementUsage && campaign.getMaxUsageCount() != null
+        if (campaign.getMaxUsageCount() != null
                 && campaign.getUsedCount() >= campaign.getMaxUsageCount()) {
             throw new BadRequestException("Kampanya kullanım limiti dolmuş.");
         }
@@ -321,11 +370,6 @@ public class AppointmentServiceImpl implements AppointmentService {
             finalPrice = basePrice.subtract(campaign.getDiscountValue()).max(BigDecimal.ZERO);
         } else {
             finalPrice = BigDecimal.ZERO;
-        }
-
-        if (incrementUsage) {
-            campaign.setUsedCount(campaign.getUsedCount() + 1);
-            campaignRepository.save(campaign);
         }
 
         appointment.setCampaign(campaign);

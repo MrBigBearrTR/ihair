@@ -12,6 +12,8 @@ public class SaleRequestDto {
     private Long salonId;
     private Long customerId;
     private Long sourceAppointmentId;
+    private Long currentSaleId;
+    private String campaignCode;
     private String notes;
     private List<SaleItemRequestDto> items = new ArrayList<>();
 }

@@ -159,6 +159,8 @@ class ReportServiceImplTest {
         item.setUnitPrice(new BigDecimal("20.00"));
         item.setListPrice(new BigDecimal("20.00"));
         item.setLineTotal(new BigDecimal("60.00"));
+        item.setDiscountShare(BigDecimal.ZERO);
+        item.setNetLineTotal(new BigDecimal("60.00"));
         item.setServiceNameSnapshot("Boya");
         item.setEmployeeNameSnapshot("Ece Usta");
         sale.addItem(item);
@@ -188,6 +190,8 @@ class ReportServiceImplTest {
         item.setUnitPrice(new BigDecimal("40.00"));
         item.setListPrice(new BigDecimal("40.00"));
         item.setLineTotal(new BigDecimal("40.00"));
+        item.setDiscountShare(BigDecimal.ZERO);
+        item.setNetLineTotal(new BigDecimal("40.00"));
         item.setServiceNameSnapshot("Bakım");
         item.setEmployeeNameSnapshot("Başka Çalışan");
         sale.addItem(item);
